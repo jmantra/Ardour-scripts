@@ -47,6 +47,8 @@ local filepath = Session:path() .. "/interchange/" .. Session:name() .. "/midifi
 
 
 
+
+
 -- Add the cron job to launch MuseScore
 local cronJobCmd = string.format([[crontab -l | grep -q 'DISPLAY=:0.0 /usr/bin/mscore "%s"' || (crontab -l; echo '*/1 * * * * DISPLAY=:0.0 /usr/bin/mscore "%s" &') | crontab -]], filepath, filepath)
 os.execute(cronJobCmd)
@@ -57,9 +59,32 @@ os.execute(cronJobCmd)
 	md = nil
 	collectgarbage ()
 
+-- Lua script to continuously check for the mscore process and remove crontab if it launches
 
-os.execute("sleep 55")
-os.execute("crontab -r")
+local function checkProcess(processName)
+    local handle = io.popen('pgrep -x ' .. processName)
+    local result = handle:read("*a")
+    handle:close()
+    return #result > 0
+end
+
+local function removeCrontab()
+    os.execute('crontab -r')
+end
+
+-- Main loop
+while true do
+    -- Check if mscore process is running
+    if checkProcess('mscore') then
+        print("mscore process detected. Removing crontab...")
+        removeCrontab()
+        print("Crontab removed.")
+        break  -- Exit the loop once crontab is removed, change this if you want to continuously check
+    end
+    -- Adjust sleep time according to your needs
+    os.execute('sleep 5') -- Check every 5 seconds
+end
+
 end end
 
 
